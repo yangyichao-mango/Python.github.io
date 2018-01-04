@@ -10,7 +10,7 @@ con = pymysql.connect(
     host="localhost",
     user="root",
     password="123456",
-    db="python",
+    db="websites",
     port=3306,
     use_unicode=True,
     charset="utf8"
@@ -18,10 +18,17 @@ con = pymysql.connect(
 cursor = con.cursor()
 
 driver = webdriver.Chrome()
+
+
 count = 0
-for i in range(1, 16 , 1):
+for i in range(0, 17 , 1):
+
     url = 'https://zh.airbnb.com/s/Shanghai--China/homes?cdn_cn=1&s_tag=ejxIlhR7&allow_override%5B%5D=&section_offset={}'.format(
         str(i))
+
+    if i == 0:
+        url = 'https://zh.airbnb.com/s/Shanghai--China/homes?cdn_cn=1&s_tag=ejxIlhR7&allow_override%5B%5D='
+
     driver.get(url)
     # print(i)
     #if i == 1270:
@@ -40,7 +47,7 @@ for i in range(1, 16 , 1):
         title = str(tag.find('div',class_="_ew0cqip").text)
         priceContent = tag.find('span',class_="_hylizj6")
         priceTmp = priceContent.find_all('span')[2].text
-        price = priceTmp.strip().lstrip().rstrip(',')
+        price = priceTmp[1:].replace(',', '')
 
         # price = str(priceContent.find('span').text)
         type = str(tag.find('small',class_='_5y5o80m').text)
@@ -52,12 +59,52 @@ for i in range(1, 16 , 1):
 
         print(url)
         print(title)
-        print(price[1:].strip().lstrip().rstrip(','))
+        print(price)
         print(type)
         print(comments + '\n')
 
-        sql = "INSERT INTO Airbnb_Shanghai(url,title,price,type,comments) values(" \
-              + url + "," + title + "," + price[1:] + "," + type + "," + comments +")"
+        sql = "INSERT INTO Airbnb_Shanghai(url,price,type,comments) values('" \
+              + url +"'," + price + ",'" + type + "','" + comments +"')"
         print(sql)
         cursor.execute(sql)
         con.commit()
+
+        sql = "UPDATE Airbnb_Shanghai " \
+              "SET title = '"+title.replace("'", '').replace('"', '')+"' " \
+              "WHERE title = '0'"
+        print(sql)
+        cursor.execute(sql)
+        con.commit()
+
+# 图标展示
+sql = "SELECT type,AVG(price) FROM Airbnb_Shanghai GROUP BY type"
+
+cursor.execute(sql)
+result = cursor.fetchall()
+print(result)
+
+roomType=[]
+price=[]
+
+for field in result:
+    roomType.append(field[0])
+    price.append(int(field[1]))
+
+print(roomType)
+print(price)
+
+
+import plotly
+plotly.tools.set_credentials_file(username='yyc', api_key='yfwQuYOyxJAeamQvdivC')
+
+import plotly.plotly as py
+from plotly.graph_objs import *
+
+trace0 = Scatter(
+    x = roomType,
+    y = price
+)
+
+data = Data([trace0])
+
+py.plot(data, filename = 'basic-line')
